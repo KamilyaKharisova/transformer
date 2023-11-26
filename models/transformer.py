@@ -9,7 +9,7 @@ class SDPA(nn.Module):
     def __init__(self, cfg):
         super(SDPA, self).__init__()
         self.cfg = cfg
-        self.dk = cfg.dk
+        self.dk = cfg.dmodel // cfg.h
 
         # TODO: инициализация Pytorch softmax
         self.softmax = ...
@@ -51,12 +51,87 @@ class SDPA(nn.Module):
         #  TODO: написать код перемножения коэффициентов внимания на матрицу values
         ...
 
+class SHA(nn.Module):
+    def __init__(self, cfg):
+        super(SHA, self).__init__()
+        self.cfg = cfg
+        self.dk = cfg.dmodel // cfg.h
+
+        # TODO: Инициализация линейных преобразований для Q, K, V
+        self.weights_q = ...
+        self.weights_k = ...
+        self.weights_v = ...
+
+        # Инициализация механизма SDPA
+        self.spda = SDPA(self.cfg)
+
+    def forward(self, Q, K, V):
+        """
+            Вычисляет SHA.
+            Формула: SHA(Q, K, V) = SDPA(Q', K', V')
+            Q', K', V' - линейно преобразованные тензоры Q, K, V.
+
+        Args:
+            Q (torch.Tensor): Тензор queries.
+            K (torch.Tensor): Тензор keys.
+            V (torch.Tensor): Тензор values.
+
+        Returns:
+            torch.Tensor: Взвешенное суммирование values, взвешенное коэффициентами внимания.
+
+        """
+
+        # TODO: Линейные преобразования Q, K, V
+
+        # TODO: Вызов SDPA с преобразованными Q, K, V
+
+class MHA(nn.Module):
+    def __init__(self, cfg):
+        super(MHA, self).__init__()
+        self.cfg = cfg
+
+        # Инициализация списка SHA модулей
+        self.sha_list = nn.ModuleList([SHA(cfg) for _ in range(cfg.h)])
+
+        # TODO: Инициализация линейного преобразования для объединения выходов из всех головок внимания
+        self.weights_o = ...
+
+    def forward(self, Q, K, V):
+        """
+            Вычисляет MHA.
+            Формула: MHA(q, k, v) = Concat(SHA1, SHA2, ..., SHAh)W^O
+            где SHAi - выход i-го Single Head Attention, W^O - линейное преобразование.
+
+        Args:
+            Q (torch.Tensor): Тензор queries.
+            K (torch.Tensor): Тензор keys.
+            V (torch.Tensor): Тензор values.
+
+        Returns:
+            torch.Tensor: Результат Multi-Head Attention.
+
+        """
+
+        # TODO: Вычисление выходов для каждого SHA
+
+        # TODO: Конкатенация выходов и применение линейного преобразования
+
+        ...
+
+
+
+
 if __name__ == "__main__":
     from config.transformer_cfg import cfg
-    q = torch.randn((1,5,cfg.dk))
-    k = torch.randn((1,10,cfg.dk))
+    q = torch.randn((1,5,cfg.dmodel // cfg.h))
+    k = torch.randn((1,10,cfg.dmodel // cfg.h))
     v = torch.randn((1,10,20))
 
     sdpa = SDPA(cfg)
     output = sdpa(q,k,v)
+
+    q = torch.randn((1, 5, cfg.dmodel))
+
+    mha = MHA(cfg)
+    output = mha(q, q, q)
 
