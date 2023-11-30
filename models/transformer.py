@@ -118,7 +118,132 @@ class MHA(nn.Module):
 
         ...
 
+class FeedForward(nn.Module):
+    def __init__(self, cfg):
+        super(FeedForward, self).__init__()
+        self.cfg = cfg
 
+        # Первый линейный слой увеличивает размерность данных с dmodel до 4*dmodel.
+        self.w1 = ...
+        # Второй линейный слой уменьшает размерность обратно с 4*dmodel до dmodel.
+        self.w2 = ...
+
+        # Функция активации ReLU используется между двумя линейными слоями.
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        """
+        Формула: FF(x) = ReLU(xW1 + b1)W2 + b2
+        где:
+        - W1, b1 - веса и смещение первого линейного слоя,
+        - W2, b2 - веса и смещение второго линейного слоя,
+
+        Args:
+            x (torch.Tensor): Входной тензор с размерностью [batch_size, seq_len, dmodel].
+
+        Returns:
+            torch.Tensor: Выходной тензор с той же размерностью, что и входной.
+        """
+        ...
+
+class PositionEncoder(nn.Module):
+    def __init__(self, cfg):
+        super(PositionEncoder, self).__init__()
+        self.cfg = cfg
+
+        # Создание матрицы позиционного кодирования
+        # Размер матрицы: [cfg.max_sentence_len, cfg.dmodel]
+        self.pe_matrix = torch.empty((cfg.max_sentence_len, cfg.dmodel))
+
+        # Формула для позиционного кодирования:
+        # PE(pos, 2i) = sin(pos / (10000 ^ (2i / dmodel)))
+        # PE(pos, 2i+1) = cos(pos / (10000 ^ (2i / dmodel)))
+        # где pos - позиция в предложении, i - индекс в векторе
+        # ...
+        # Полезно знать. Пусть a - numpy array. Тогда a[0::2] выдает элементы на четных позициях, а a[1::2] на нечетных.
+
+        ...
+
+    def forward(self, x):
+        """
+       Прямой проход PositionEncoder. Добавляет positional encoding к входному тензору.
+
+       Positional encoding вектор вычисляется как:
+       PE(pos, 2i) = sin(pos / (10000 ^ (2i / dmodel)))
+       PE(pos, 2i+1) = cos(pos / (10000 ^ (2i / dmodel)))
+       где pos - позиция в предложении, i - индекс в векторе.
+
+       Args:
+           x (torch.Tensor): Входной тензор с размерностью [batch_size, seq_len, dmodel].
+
+       Returns:
+           torch.Tensor: Тензор с добавленным позиционным кодированием.
+       """
+        # Вычисление размера предложения из входного тензора
+        # ...
+
+        # Добавление позиционного кодирования к входному тензору
+        # ...
+        ...
+
+class EncoderSingleLayer(nn.Module):
+    def __init__(self, cfg):
+        super(EncoderSingleLayer, self).__init__()
+        # Инициализация Multi-Head Attention (MHA)
+        self.mha = MHA(cfg)
+        # Инициализация нормализации
+        self.ln1 = nn.LayerNorm(cfg.dmodel)
+        self.ln2 = nn.LayerNorm(cfg.dmodel)
+        # Инициализация полносвязного Feed Forward слоя
+        self.ff = FeedForward(cfg)
+
+    def forward(self, x):
+        """
+        Прямой проход одного слоя энкодера.
+
+        Этапы:
+        1. Применение Multi-Head Attention.
+        2. Добавление исходного входа к результату (Residual Connection).
+        3. Применение Layer Normalization.
+        4. Применение Feed Forward слоя.
+        5. Добавление результата после MHA к результату FF (Residual Connection).
+        6. Применение Layer Normalization.
+
+        Args:
+            x (torch.Tensor): Входной тензор с размерностью [batch_size, seq_len, dmodel].
+
+        Returns:
+            torch.Tensor: Тензор после одного слоя энкодера.
+        """
+        # Применение MHA, добавление Residual Connection и Layer Normalization
+        # ...
+
+        # Применение Feed Forward, добавление Residual Connection и Layer Normalization
+        # ...
+
+
+class Encoder(nn.Module):
+    def __init__(self, cfg):
+        super(Encoder, self).__init__()
+        # Создание N слоев энкодера
+        # ...
+        self.seq = torch.nn.ModuleList([EncoderSingleLayer(cfg) for i in range(cfg.N)])
+        self.cfg = cfg
+
+    def forward(self, x):
+        """
+        Прямой проход через энкодер.
+
+        Последовательно применяет N слоев энкодера к входным данным.
+
+        Args:
+            x (torch.Tensor): Входной тензор с размерностью [batch_size, seq_len, dmodel].
+
+        Returns:
+            torch.Tensor: Тензор после прохождения через N слоев энкодера.
+        """
+        # Применение каждого слоя энкодера
+        # ...
 
 
 if __name__ == "__main__":
