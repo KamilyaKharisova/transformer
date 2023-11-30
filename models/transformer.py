@@ -221,13 +221,12 @@ class EncoderSingleLayer(nn.Module):
         # Применение Feed Forward, добавление Residual Connection и Layer Normalization
         # ...
 
-
 class Encoder(nn.Module):
     def __init__(self, cfg):
         super(Encoder, self).__init__()
-        # Создание N слоев энкодера
+        # Создание N слоев энкодера cfg.N
         # ...
-        self.seq = torch.nn.ModuleList([EncoderSingleLayer(cfg) for i in range(cfg.N)])
+        self.seq = ...
         self.cfg = cfg
 
     def forward(self, x):
