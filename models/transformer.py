@@ -14,7 +14,11 @@ class SDPA(nn.Module):
         # TODO: инициализация Pytorch softmax
         self.softmax = ...
 
-    def forward(self, Q, K, V):
+        # TODO: инициализация dropout
+        self.dropout = ...
+
+
+    def forward(self, Q, K, V, mask_self_attention=None, mask_padding=None):
         """
             Вычисляет SDPA.
             Формула: SDPA(Q, K, V) = softmax((QK^T) / sqrt(dk))V
@@ -25,8 +29,12 @@ class SDPA(nn.Module):
             Q (torch.Tensor): Тензор queries. Размерность  [batch_size, l, dk],
                               где seq_len - длина последовательности queries, dk - размерность векторов запросов.
             K (torch.Tensor): Тензор keys. Размерность  [batch_size, n, dk].
-            V (torch.Tensor): Тензор values. Размерность  [batch_size, n, dv],
-                              где dv - размерность векторов values.
+            V (torch.Tensor): Тензор values. Размерность  [batch_size, n, dk],
+                              где dk - размерность векторов values.
+            mask_self_attention (torch.Tensor): Тензор bools, маска для self attention декодера.
+                                                Размерность  [batch_size, n, l].
+            mask_padding (torch.Tensor): Тензор bools, маска для padding.
+                                                Размерность  [batch_size, n, l].
 
         Returns:
             torch.Tensor: Тензор, представляющий взвешенное суммирование values, взвешенное
@@ -41,6 +49,11 @@ class SDPA(nn.Module):
         #    Получаем необработанные оценки внимания.
         # TODO: написать код для получения необработанных оценок внимания
 
+        # 1.1 Если mask_self_attention и/или mask_padding не None, заполнить необработанные оценки внимания
+        # значениями -inf в тех местах, где mask_self_attention и/или mask_padding True
+        # TODO: написать код для обаботки масок
+
+
         # 2. Применение функции softmax к необработанным оценкам внимания для получения коэффициентов внимания.
         #    Шаг softmax гарантирует, что коэффициенты положительны и в сумме дают 1.
         # TODO: написать код с применением softmax к необработанным оценкам внимания
@@ -49,6 +62,9 @@ class SDPA(nn.Module):
         #    Оператор @ здесь представляет собой пакетное матричное умножение коэффициентов внимания
         #    на тензор значений.
         #  TODO: написать код перемножения коэффициентов внимания на матрицу values
+
+        # 3. Применение dropout
+        #  TODO: написать код применения dropout
         ...
 
 class SHA(nn.Module):
@@ -65,7 +81,7 @@ class SHA(nn.Module):
         # Инициализация механизма SDPA
         self.spda = SDPA(self.cfg)
 
-    def forward(self, Q, K, V):
+    def forward(self, Q, K, V, mask_self_attention=None, mask_padding=None):
         """
             Вычисляет SHA.
             Формула: SHA(Q, K, V) = SDPA(Q', K', V')
@@ -75,6 +91,8 @@ class SHA(nn.Module):
             Q (torch.Tensor): Тензор queries.
             K (torch.Tensor): Тензор keys.
             V (torch.Tensor): Тензор values.
+            mask_self_attention (torch.Tensor): Тензор bools, маска для self attention декодера.
+            mask_padding (torch.Tensor): Тензор bools, маска для encoder-decoder attention декодера.
 
         Returns:
             torch.Tensor: Взвешенное суммирование values, взвешенное коэффициентами внимания.
@@ -96,7 +114,7 @@ class MHA(nn.Module):
         # TODO: Инициализация линейного преобразования для объединения выходов из всех головок внимания
         self.weights_o = ...
 
-    def forward(self, Q, K, V):
+    def forward(self, Q, K, V, mask_self_attention=None, mask_padding=None):
         """
             Вычисляет MHA.
             Формула: MHA(q, k, v) = Concat(SHA1, SHA2, ..., SHAh)W^O
@@ -106,6 +124,8 @@ class MHA(nn.Module):
             Q (torch.Tensor): Тензор queries.
             K (torch.Tensor): Тензор keys.
             V (torch.Tensor): Тензор values.
+            mask_self_attention (torch.Tensor): Тензор bools, маска для self attention декодера.
+            mask_padding (torch.Tensor): Тензор bools, маска для encoder-decoder attention декодера.
 
         Returns:
             torch.Tensor: Результат Multi-Head Attention.
@@ -162,6 +182,8 @@ class PositionEncoder(nn.Module):
         # ...
         # Полезно знать. Пусть a - numpy array. Тогда a[0::2] выдает элементы на четных позициях, а a[1::2] на нечетных.
 
+        # Инициализация dropout
+        self.dropout = ...
         ...
 
     def forward(self, x):
@@ -184,6 +206,9 @@ class PositionEncoder(nn.Module):
 
         # Добавление позиционного кодирования к входному тензору
         # ...
+
+        # Использование dropout
+        # ...
         ...
 
 class EncoderSingleLayer(nn.Module):
@@ -197,15 +222,21 @@ class EncoderSingleLayer(nn.Module):
         # Инициализация полносвязного Feed Forward слоя
         self.ff = FeedForward(cfg)
 
+        # Инициализация 2-x dropout
+        self.dropout_1 = ...
+        self.dropout_2 = ...
+
     def forward(self, x):
         """
         Прямой проход одного слоя энкодера.
 
         Этапы:
         1. Применение Multi-Head Attention.
+        1.1 Применение dropout
         2. Добавление исходного входа к результату (Residual Connection).
         3. Применение Layer Normalization.
         4. Применение Feed Forward слоя.
+        4.1 Применение dropout
         5. Добавление результата после MHA к результату FF (Residual Connection).
         6. Применение Layer Normalization.
 
@@ -242,6 +273,138 @@ class Encoder(nn.Module):
             torch.Tensor: Тензор после прохождения через N слоев энкодера.
         """
         # Применение каждого слоя энкодера
+        # ...
+
+class DecoderSingleLayer(nn.Module):
+    def __init__(self, cfg):
+        super(DecoderSingleLayer, self).__init__()
+
+        # Инициализация Multi-Head Attention для self attention декодера
+        # ...
+
+        # Инициализация слоя нормализации и Dropout
+        # ...
+
+        # Инициализация Multi-Head Attention для внимания между энкодером и декодером
+        # ...
+
+        # Инициализация слоя нормализации и Dropout
+        # ...
+
+        # Инициализация полносвязного Feed Forward слоя
+        # ...
+
+        # Инициализация слоя нормализации и Dropout
+        # ...
+
+    def forward(self, x, enc_out, mask_for_pad_decoder, mask_for_pad_encoder_decoder, mask):
+        """
+        Forward pass одного слоя декодера.
+
+        Этапы:
+        1. Применение self-attention с маской предотвращения утечки будущей информации и маской для padding входа декодера.
+        2. Добавление Dropout, residual connection и применение Layer Normalization.
+        3. Применение attention между энкодером и декодером с маской для padding входа декодера и энкодера.
+        4. Добавление Dropout, residual connection и применение Layer Normalization.
+        5. Применение Feed Forward слоя.
+        6. Добавление Dropout, residual connection и применение Layer Normalization.
+
+        Args:
+            x (torch.Tensor): Входной тензор декодера.
+            enc_out (torch.Tensor): Выходной тензор энкодера.
+            mask_for_pad_decoder (torch.Tensor): Маска padding входа энкодера.
+            mask_for_pad_encoder_decoder (torch.Tensor): Маска padding входа декодера и энкодера.
+            mask (torch.Tensor): Маска для предотвращения утечки будущей информации.
+
+        Returns:
+            torch.Tensor: Тензор после одного слоя декодера.
+        """
+        # Применение self-attention, residual connection, Layer Normalization и Dropout
+        # ...
+
+        # Применение attention между энкодером и декодером, residual connection, Layer Normalization и Dropout
+        # ...
+
+        # Применение Feed Forward, residual connection, Layer Normalization и Dropout
+        # ...
+
+class Decoder(nn.Module):
+    def __init__(self, cfg):
+        super(Decoder, self).__init__()
+        # Создание N слоев декодера
+        self.seq = ...
+        self.cfg = cfg
+
+    def forward(self, x, enc_out, mask_for_pad_encoder, mask_for_pad_encoder_decoder, mask):
+        """
+        Forward pass через декодер.
+
+        Последовательно применяет N слоев декодера к входным данным.
+
+        Args:
+            x (torch.Tensor): Входной тензор декодера.
+            enc_out (torch.Tensor): Выходной тензор энкодера.
+            mask_for_pad_encoder (torch.Tensor): Маска padding входа энкодера.
+            mask_for_pad_encoder_decoder (torch.Tensor): Маска padding входа декодера и энкодера.
+            mask (torch.Tensor): Маска для предотвращения утечки будущей информации.
+
+        Returns:
+            torch.Tensor: Тензор после прохождения через N слоев декодера.
+        """
+        # Применение каждого слоя декодера
+        # ...
+
+class Transformer(nn.Module):
+    def __init__(self, cfg):
+        super(Transformer, self).__init__()
+
+        # Инициализация слоя для получения эмбеддингов и позиционного кодирования
+        self.embedding_layer = nn.Embedding(cfg.voc_size, cfg.dmodel)
+        self.pe = PositionEncoder(cfg)
+
+
+        # Инициализация энкодера
+        self.encoder = Encoder(cfg)
+
+        # Инициализация декодера
+        self.decoder = Decoder(cfg)
+
+        # Инициализация слоя линейного преобразования для выхода
+        # Примечание: Веса выходного слоя могут быть связаны с весами для получения эмбеддингов
+        self.output_projection_layer = nn.Linear(cfg.dmodel, cfg.voc_size)
+        self.output_projection_layer.weight = self.embedding_layer.weight
+        self.output_projection_layer.bias = None
+
+    def forward(self, enc_inp, dec_inp, mask_for_pad_decoder, mask_for_pad_encoder_decoder, mask):
+        """
+        Forward pass через трансформер.
+
+        Этапы:
+        1. Применение слоя для получения эмбеддингов и позиционного кодирования к входным данным энкодера и декодера.
+        2. Прохождение через энкодер.
+        3. Прохождение через декодер.
+        4. Применение выходного линейного преобразования.
+
+        Args:
+            enc_inp (torch.Tensor): Входные данные энкодера.
+            dec_inp (torch.Tensor): Входные данные декодера.
+            mask_for_pad_decoder (torch.Tensor): Маска паддинга для входных данных энкодера.
+            mask_for_pad_encoder_decoder (torch.Tensor): Маска паддинга для входных данных декодера и энкодера.
+            mask (torch.Tensor): Маска для предотвращения утечки будущей информации в декодере.
+
+        Returns:
+            torch.Tensor: Выходные данные трансформера.
+        """
+        # Применение слоя для получения эмбеддингов и позиционного кодирования
+        # ...
+
+        # Прохождение через энкодер
+        # ...
+
+        # Прохождение через декодер
+        # ...
+
+        # Применение выходного линейного преобразования
         # ...
 
 
